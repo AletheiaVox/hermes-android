@@ -39,6 +39,16 @@ class SavedConnection {
   final String? dashboardUsername;
   final String? dashboardPassword;
 
+  /// Optional Hermes profile name for the Desktop gateway transport.
+  ///
+  /// A machine-level `hermes dashboard` / `hermes serve` hosts every profile
+  /// on the machine and runs a chat under the profile named by the `profile`
+  /// query parameter on `/api/ws`; without it the chat silently runs as the
+  /// server's own (default) profile. Set this to the profile this connection
+  /// is meant to talk to (e.g. `sol`). Leave null for an isolated per-profile
+  /// dashboard, where the server already knows its profile.
+  final String? gatewayProfile;
+
   SavedConnection({
     required this.id,
     required this.label,
@@ -53,6 +63,7 @@ class SavedConnection {
     this.dashboardPortOverride,
     this.dashboardUsername,
     this.dashboardPassword,
+    this.gatewayProfile,
   });
 
   String get baseUrl {
@@ -155,6 +166,9 @@ class SavedConnection {
     if (dashboardUsername != null && dashboardUsername!.isNotEmpty) {
       m['dashboard_username'] = dashboardUsername;
     }
+    if (gatewayProfile != null && gatewayProfile!.isNotEmpty) {
+      m['gateway_profile'] = gatewayProfile;
+    }
     return m;
   }
 
@@ -180,6 +194,7 @@ class SavedConnection {
       dashboardPortOverride: map['dashboard_port'] as int?,
       dashboardUsername: nonEmpty(map['dashboard_username']),
       dashboardPassword: nonEmpty(map['dashboard_password']),
+      gatewayProfile: nonEmpty(map['gateway_profile']),
     );
   }
 
@@ -199,12 +214,14 @@ class SavedConnection {
     int? dashboardPortOverride,
     String? dashboardUsername,
     String? dashboardPassword,
+    String? gatewayProfile,
     bool clearGatewayPrefix = false,
     bool clearDashboardPrefix = false,
     bool clearDashboardPort = false,
     bool clearDashboardUsername = false,
     bool clearDashboardPassword = false,
     bool clearDesktopGatewayUrl = false,
+    bool clearGatewayProfile = false,
   }) {
     return SavedConnection(
       id: id,
@@ -232,6 +249,9 @@ class SavedConnection {
       dashboardPassword: clearDashboardPassword
           ? null
           : (dashboardPassword ?? this.dashboardPassword),
+      gatewayProfile: clearGatewayProfile
+          ? null
+          : (gatewayProfile ?? this.gatewayProfile),
     );
   }
 }

@@ -4,6 +4,19 @@ All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Release notes for
 versions prior to 1.0.7 are in the **What's new** sections of the [README](README.md).
 
+## [Unreleased]
+
+### Fixed
+
+- Chats over the Desktop Gateway transport could silently run under the
+  server's *default* profile instead of the profile the connection was meant
+  for. A machine-level `hermes dashboard`/`hermes serve` hosts every profile
+  and only runs a chat as a given profile when the `/api/ws` socket carries a
+  `profile` query parameter, which the app never sent. Connections now have an
+  optional **Hermes profile** field (under *Custom proxy and dashboard
+  details*) that is passed on the socket. Leave it blank for isolated
+  per-profile dashboards.
+
 ## [2.1.1] - 2026-09-06
 
 ### Fixed

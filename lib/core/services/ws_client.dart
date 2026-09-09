@@ -153,6 +153,7 @@ class WsClient {
   final String baseUrl;
   final String? _token;
   final String? _ticket;
+  final String? _profile;
   IOWebSocketChannel? _channel;
   bool _connected = false;
   int _nextId = 1;
@@ -180,11 +181,16 @@ class WsClient {
   ConnectionCallback? onConnectionChanged;
   GatewayReadyCallback? onGatewayReady;
 
-  factory WsClient(String baseUrl, {String? token, String? ticket}) {
-    return WsClient._(baseUrl, token, ticket);
+  factory WsClient(
+    String baseUrl, {
+    String? token,
+    String? ticket,
+    String? profile,
+  }) {
+    return WsClient._(baseUrl, token, ticket, profile);
   }
 
-  WsClient._(this.baseUrl, this._token, this._ticket);
+  WsClient._(this.baseUrl, this._token, this._ticket, this._profile);
 
   /// Connect to the WebSocket gateway.
   Future<void> connect() async {
@@ -201,7 +207,12 @@ class WsClient {
     // A transport can close before a caller starts waiting for gateway.ready.
     // Observe that error future immediately; the waiter still receives it.
     readyCompleter.future.ignore();
-    final wsUrl = buildWebSocketUrl(baseUrl, token: _token, ticket: _ticket);
+    final wsUrl = buildWebSocketUrl(
+      baseUrl,
+      token: _token,
+      ticket: _ticket,
+      profile: _profile,
+    );
     final channel = IOWebSocketChannel.connect(Uri.parse(wsUrl));
     _channel = channel;
     channel.stream.listen(
@@ -314,21 +325,31 @@ class WsClient {
 
   /// Produces the gateway `/api/ws` URL. Secured Desktop gateways use a
   /// single-use ticket; insecure legacy gateways still use a session token.
+  ///
+  /// [profile] selects which Hermes profile the socket's chat runs under on a
+  /// machine-level (multi-profile) dashboard. Hermes reads it from the
+  /// `profile` query parameter; when it is absent the server falls back to its
+  /// own profile, so a blank value is deliberately not sent.
   static String buildWebSocketUrl(
     String baseUrl, {
     String? token,
     String? ticket,
+    String? profile,
   }) {
     final socketBase = baseUrl
         .replaceFirst('http://', 'ws://')
         .replaceFirst('https://', 'wss://');
     final uri = Uri.parse('$socketBase/api/ws');
-    final credential = ticket?.trim().isNotEmpty == true
-        ? {'ticket': ticket!.trim()}
-        : token?.trim().isNotEmpty == true
-        ? {'token': token!.trim()}
-        : const <String, String>{};
-    return uri.replace(queryParameters: credential).toString();
+    final query = <String, String>{};
+    if (ticket?.trim().isNotEmpty == true) {
+      query['ticket'] = ticket!.trim();
+    } else if (token?.trim().isNotEmpty == true) {
+      query['token'] = token!.trim();
+    }
+    if (profile?.trim().isNotEmpty == true) {
+      query['profile'] = profile!.trim();
+    }
+    return uri.replace(queryParameters: query).toString();
   }
 
   /// Handle inbound messages.
@@ -758,10 +779,7 @@ class WsClient {
         'A Hermes request ID is required',
       );
     }
-    final params = <String, dynamic>{
-      'request_id': requestId,
-      'answer': answer,
-    };
+    final params = <String, dynamic>{'request_id': requestId, 'answer': answer};
     if (questionId != null && questionId.trim().isNotEmpty) {
       params['question_id'] = questionId;
     }

@@ -345,6 +345,32 @@ void main() {
       expect(restored.dashboardPort, 9119);
     });
 
+    test('round-trips the Hermes profile and clears it via copyWith', () {
+      final conn = SavedConnection(
+        id: '4',
+        label: 'Sol',
+        host: 'hermes.example.com',
+        port: 8642,
+        apiKey: 'key',
+        gatewayProfile: 'sol',
+      );
+      final restored = SavedConnection.fromMap(conn.toMap());
+      expect(conn.toMap()['gateway_profile'], 'sol');
+      expect(restored.gatewayProfile, 'sol');
+      expect(
+        SavedConnection.fromMap({
+          'id': '5',
+          'label': 'Blank',
+          'host': 'hermes.example.com',
+          'port': 8642,
+          'gateway_profile': '  ',
+        }).gatewayProfile,
+        isNull,
+      );
+      expect(conn.copyWith(label: 'Still Sol').gatewayProfile, 'sol');
+      expect(conn.copyWith(clearGatewayProfile: true).gatewayProfile, isNull);
+    });
+
     test('fromMap normalises blank credentials to null', () {
       final restored = SavedConnection.fromMap({
         'id': '3',
@@ -1198,6 +1224,31 @@ void main() {
     test('keeps legacy token support for insecure gateways', () {
       expect(
         WsClient.buildWebSocketUrl('http://hermes.local:9119', token: 'spa'),
+        'ws://hermes.local:9119/api/ws?token=spa',
+      );
+    });
+
+    test(
+      'names the Hermes profile so a multi-profile dashboard chats as it',
+      () {
+        expect(
+          WsClient.buildWebSocketUrl(
+            'https://hermes-desktop.example.lan',
+            ticket: 'ticket',
+            profile: 'sol',
+          ),
+          'wss://hermes-desktop.example.lan/api/ws?ticket=ticket&profile=sol',
+        );
+      },
+    );
+
+    test('omits a blank profile so the server keeps its own default', () {
+      expect(
+        WsClient.buildWebSocketUrl(
+          'http://hermes.local:9119',
+          token: 'spa',
+          profile: '   ',
+        ),
         'ws://hermes.local:9119/api/ws?token=spa',
       );
     });
