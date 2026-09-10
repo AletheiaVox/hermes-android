@@ -207,12 +207,7 @@ class WsClient {
     // A transport can close before a caller starts waiting for gateway.ready.
     // Observe that error future immediately; the waiter still receives it.
     readyCompleter.future.ignore();
-    final wsUrl = buildWebSocketUrl(
-      baseUrl,
-      token: _token,
-      ticket: _ticket,
-      profile: _profile,
-    );
+    final wsUrl = buildWebSocketUrl(baseUrl, token: _token, ticket: _ticket);
     final channel = IOWebSocketChannel.connect(Uri.parse(wsUrl));
     _channel = channel;
     channel.stream.listen(
@@ -325,31 +320,40 @@ class WsClient {
 
   /// Produces the gateway `/api/ws` URL. Secured Desktop gateways use a
   /// single-use ticket; insecure legacy gateways still use a session token.
-  ///
-  /// [profile] selects which Hermes profile the socket's chat runs under on a
-  /// machine-level (multi-profile) dashboard. Hermes reads it from the
-  /// `profile` query parameter; when it is absent the server falls back to its
-  /// own profile, so a blank value is deliberately not sent.
   static String buildWebSocketUrl(
     String baseUrl, {
     String? token,
     String? ticket,
-    String? profile,
   }) {
     final socketBase = baseUrl
         .replaceFirst('http://', 'ws://')
         .replaceFirst('https://', 'wss://');
     final uri = Uri.parse('$socketBase/api/ws');
-    final query = <String, String>{};
-    if (ticket?.trim().isNotEmpty == true) {
-      query['ticket'] = ticket!.trim();
-    } else if (token?.trim().isNotEmpty == true) {
-      query['token'] = token!.trim();
-    }
-    if (profile?.trim().isNotEmpty == true) {
-      query['profile'] = profile!.trim();
-    }
-    return uri.replace(queryParameters: query).toString();
+    final credential = ticket?.trim().isNotEmpty == true
+        ? {'ticket': ticket!.trim()}
+        : token?.trim().isNotEmpty == true
+        ? {'token': token!.trim()}
+        : const <String, String>{};
+    return uri.replace(queryParameters: credential).toString();
+  }
+
+  /// Adds the connection's Hermes profile to a JSON-RPC params map.
+  ///
+  /// A machine-level `hermes dashboard` / `hermes serve` hosts every profile
+  /// on the machine and scopes each RPC by `params['profile']`
+  /// (`_profile_db` / `_profile_scoped` on the server; `session.create` and
+  /// `session.resume` store it on the session so later turns re-bind to that
+  /// profile's home). The socket URL carries no profile. Hermes Desktop sends
+  /// the field on every scoped request, so this does the same. A blank
+  /// profile sends nothing and the server keeps its own default; a caller that
+  /// already set `profile` wins.
+  static Map<String, dynamic> withProfile(
+    Map<String, dynamic> params,
+    String? profile,
+  ) {
+    final name = profile?.trim() ?? '';
+    if (name.isEmpty || params.containsKey('profile')) return params;
+    return <String, dynamic>{...params, 'profile': name};
   }
 
   /// Handle inbound messages.
@@ -577,7 +581,7 @@ class WsClient {
       jsonEncode({
         'jsonrpc': '2.0',
         'method': method,
-        'params': params,
+        'params': withProfile(params, _profile),
         'id': id,
       }),
     );
@@ -614,7 +618,7 @@ class WsClient {
       jsonEncode({
         'jsonrpc': '2.0',
         'method': method,
-        'params': params,
+        'params': withProfile(params, _profile),
         'id': id,
       }),
     );

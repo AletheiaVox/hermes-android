@@ -42,11 +42,12 @@ class SavedConnection {
   /// Optional Hermes profile name for the Desktop gateway transport.
   ///
   /// A machine-level `hermes dashboard` / `hermes serve` hosts every profile
-  /// on the machine and runs a chat under the profile named by the `profile`
-  /// query parameter on `/api/ws`; without it the chat silently runs as the
-  /// server's own (default) profile. Set this to the profile this connection
-  /// is meant to talk to (e.g. `sol`). Leave null for an isolated per-profile
-  /// dashboard, where the server already knows its profile.
+  /// on the machine and scopes each `/api/ws` JSON-RPC call by the `profile`
+  /// field in its params (`session.create` / `session.resume` store it on the
+  /// session); without it the chat silently runs as the server's own
+  /// (default) profile. Set this to the profile this connection is meant to
+  /// talk to (e.g. `sol`). Leave null for an isolated per-profile dashboard,
+  /// where the server already knows its profile.
   final String? gatewayProfile;
 
   SavedConnection({
